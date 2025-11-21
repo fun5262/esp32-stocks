@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Stock List Editor</title>
+<style>
+    body {
+        font-family: Arial;
+        max-width: 600px;
+        margin: 20px auto;
+        background: #f6f6f6;
+        padding: 20px;
+        border-radius: 12px;
+        border: 1px solid #ccc;
+    }
+    h2 { text-align: center; }
+    .row { display: flex; margin-bottom: 8px; }
+    .row input {
+        flex: 1;
+        padding: 8px;
+        font-size: 16px;
+    }
+    .row button {
+        margin-left: 6px;
+    }
+    #addBtn, #saveBtn {
+        margin-top: 10px;
+        padding: 10px;
+        width: 120px;
+        font-size: 16px;
+    }
+</style>
+</head>
+<body>
+
+<h2>Edit Stock List</h2>
+
+<div id="list"></div>
+
+<button id="addBtn">+ Add</button>
+<button id="saveBtn">Save</button>
+
+<script>
+
+// ----------- SETTINGS (EDIT THESE) ------------
+const username = "fun5262";             // your GitHub username
+const repo     = "esp32-stocks";        // your repo name
+const filePath = "stocks.json";         // JSON file to update
+const pat      = "YOUR_GITHUB_PAT_HERE";   // <-- paste your PAT here
+// ---------------------------------------------
+
+const apiURL = `https://api.github.com/repos/${username}/${repo}/contents/${filePath}`;
+
+function addRow(value="") {
+    const div = document.createElement("div");
+    div.className = "row";
+    div.innerHTML = `
+        <input type="text" value="${value}">
+        <button onclick="this.parentElement.remove()">X</button>
+    `;
+    document.getElementById("list").appendChild(div);
+}
+
+async function loadStocks() {
+    let res = await fetch(apiURL);
+    let data = await res.json();
+    let content = JSON.parse(atob(data.content));
+
+    content.stocks.forEach(s => addRow(s));
+}
+
+document.getElementById("addBtn").onclick = () => addRow("");
+
+document.getElementById("saveBtn").onclick = async () => {
+    let rows = [...document.querySelectorAll(".row input")];
+    let list = rows.map(r => r.value.trim()).filter(v => v);
+
+    let newJSON = { "stocks": list };
+
+    let getRes = await fetch(apiURL);
+    let getData = await getRes.json();
+
+    let body = {
+        message: "Update stocks.json",
+        content: btoa(JSON.stringify(newJSON, null, 2)),
+        sha: getData.sha
+    };
+
+    await fetch(apiURL, {
+        method: "PUT",
+        headers: {
+            "Authorization": "token " + pat,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+    });
+
+    alert("Saved!");
+    location.reload();
+};
+
+loadStocks();
+
+</script>
+</body>
+</html>
